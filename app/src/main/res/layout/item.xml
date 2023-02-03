@@ -20,8 +20,11 @@
             android:layout_marginStart="20dp"
             android:layout_marginTop="20dp"
             android:gravity="center"
+            android:textAlignment="center"
+            android:src="@drawable/sample"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent"
+            app:imageUri="@{data.image}" />
 
         <TextView
             android:id="@+id/item_title"
@@ -32,7 +35,7 @@
             android:text="@{data.title}"
             app:layout_constraintTop_toBottomOf="@+id/item_image"
             app:layout_constraintBottom_toTopOf="@id/item_content"
-            tools:layout_editor_absoluteX="20dp" />
+            tools:layout_editor_absoluteX="20dp"/>
 
         <TextView
             android:id="@+id/item_content"
@@ -42,7 +45,7 @@
             android:gravity="center"
             android:text="@{data.content}"
             app:layout_constraintTop_toBottomOf="@id/item_title"
-            tools:layout_editor_absoluteX="20dp" />
+            tools:layout_editor_absoluteX="20dp"/>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

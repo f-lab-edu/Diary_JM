@@ -1,4 +1,4 @@
-package com.example.sunflower_jm.main
+package com.example.sunflower_jm.activity
 
 import android.content.DialogInterface
 import android.content.Intent
@@ -10,21 +10,24 @@ import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.GridLayoutManager
-import com.example.sunflower_jm.AddItemActivity
 import com.example.sunflower_jm.OnItemLongClickListener
 import com.example.sunflower_jm.R
-import com.example.sunflower_jm.RecyclerViewAdapter
+import com.example.sunflower_jm.adapter.RecyclerViewAdapter
 import com.example.sunflower_jm.databinding.ActivityMainBinding
 import com.example.sunflower_jm.db.AppDatabase
 import com.example.sunflower_jm.db.DiaryEntity
+import com.example.sunflower_jm.pattern.MainViewModel
 
 class MainActivity : AppCompatActivity(), OnItemLongClickListener {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var adapter: RecyclerViewAdapter
+
     private val viewModel by lazy {
-        ViewModelProvider(this, MainViewModel.Factory(AppDatabase.getInstance(this)!!.getDiaryDao())).
-        get(MainViewModel::class.java)
+        ViewModelProvider(
+            this,
+            MainViewModel.Factory(AppDatabase.getInstance(this)!!.getDiaryDao())
+        ).get(MainViewModel::class.java)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,6 +42,7 @@ class MainActivity : AppCompatActivity(), OnItemLongClickListener {
             val intent = Intent(this, AddItemActivity::class.java)
             startActivity(intent)
         }
+
         viewModel.obtainLoadItems()
 
         viewModel.items.observe(this, Observer {
