@@ -1,27 +1,25 @@
-package com.example.sunflower_jm.view.detail
+package com.example.sunflower_jm.activity
 
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
 import androidx.appcompat.app.AppCompatActivity
-import androidx.databinding.DataBindingUtil
-import com.example.sunflower_jm.R
 import com.example.sunflower_jm.databinding.DetailViewBinding
 import com.example.sunflower_jm.db.AppDatabase
 import com.example.sunflower_jm.db.DiaryDao
-import com.example.sunflower_jm.db.model.DiaryEntity
-import com.example.sunflower_jm.view.update.ActivityContract
+import com.example.sunflower_jm.db.DiaryEntity
+import com.example.sunflower_jm.DetailActivityContract
 
 class DetailActivity : AppCompatActivity() {
 
-    private lateinit var binding: DetailViewBinding
-    private lateinit var diaryDao: DiaryDao
-    private lateinit var db: AppDatabase
+    lateinit var binding: DetailViewBinding
+    lateinit var diaryDao: DiaryDao
+    lateinit var db: AppDatabase
     private lateinit var item: DiaryEntity
 
     private val getList: ActivityResultLauncher<DiaryEntity> =
-        registerForActivityResult(ActivityContract()) { result: HashMap<String, String>? ->
+        registerForActivityResult(DetailActivityContract()) { result: HashMap<String, String>? ->
             result?.let {
                 if (it.get("image") != "null") {
                     binding.detailImage.setImageURI(Uri.parse(it.get("image")))
@@ -38,13 +36,22 @@ class DetailActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = DataBindingUtil.setContentView(this, R.layout.detail_view)
+
+        binding = DetailViewBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
         db = AppDatabase.getInstance(this)!!
         diaryDao = db.getDiaryDao()
 
         item = intent.getSerializableExtra("data") as DiaryEntity
-        binding.data = item
+
+
+        Log.e("이미지 확인2", item.image!!)
+        if (item.image != "null") {
+            binding.detailImage.setImageURI(Uri.parse(item.image))
+        }
+        binding.detailTitle.text = item.title
+        binding.detailContent.text = item.content
 
         binding.update.setOnClickListener {
             getList.launch(item)

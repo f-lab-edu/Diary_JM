@@ -1,12 +1,13 @@
-package com.example.sunflower_jm.view.update
+package com.example.sunflower_jm
 
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import androidx.activity.result.contract.ActivityResultContract
-import com.example.sunflower_jm.db.model.DiaryEntity
+import com.example.sunflower_jm.db.DiaryEntity
+import com.example.sunflower_jm.activity.UpdateItemActivity
 
-class ActivityContract : ActivityResultContract<DiaryEntity, HashMap<String, String>?>() {
+class DetailActivityContract : ActivityResultContract<DiaryEntity, HashMap<String, String>?>() {
 
     override fun createIntent(context: Context, input: DiaryEntity): Intent {
         return UpdateItemActivity.getIntent(context, input)
