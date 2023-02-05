@@ -1,4 +1,4 @@
-package com.example.sunflower_jm.activity
+package com.example.sunflower_jm.view.update
 
 import android.app.Activity
 import android.content.ContentValues
@@ -17,95 +17,86 @@ import com.bumptech.glide.Glide
 import com.example.sunflower_jm.R
 import com.example.sunflower_jm.databinding.UpdateItemBinding
 import com.example.sunflower_jm.db.AppDatabase
-import com.example.sunflower_jm.db.DiaryDao
-import com.example.sunflower_jm.db.DiaryEntity
-import com.example.sunflower_jm.pattern.UpdateContract
-import com.example.sunflower_jm.pattern.UpdatePresenter
+import com.example.sunflower_jm.db.model.DiaryEntity
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.collections.HashMap
 
-class UpdateItemActivity : AppCompatActivity(), UpdateContract.View {
+class UpdateItemActivity : AppCompatActivity() {
 
-    lateinit var binding: UpdateItemBinding
-    lateinit var db: AppDatabase
-    lateinit var diaryDao: DiaryDao
+    private lateinit var binding: UpdateItemBinding
     private var uriInfo: Uri? = null
 
-    private lateinit var item: DiaryEntity
-
-    private val presenter by lazy {
-        UpdatePresenter(
-            item.id!!,
-            uriInfo,
-            binding.editTitle.text.toString(),
-            binding.editContent.text.toString(),
-            diaryDao,
-            this
+    private val viewModel by lazy {
+        UpdateViewModel(
+            AppDatabase.getInstance(this)!!.getDiaryDao(),
         )
     }
 
-    private val readImage = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        it.data?.data?.let { uri ->
-            contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            Glide.with(this).load(uri).into(binding.imgLoad)
-            uriInfo = uri
+    private val readImage =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            it.data?.data?.let { uri ->
+                contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+                Glide.with(this).load(uri).into(binding.imgLoad)
+                viewModel.updateUri(uri)
+            }
         }
-    }
 
     private val getTakePicture =
         registerForActivityResult(ActivityResultContracts.TakePicture()) {
             if (it) {
                 uriInfo.let { binding.imgLoad.setImageURI(uriInfo) }
+                viewModel.updateUri(uriInfo!!)
+
             }
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         binding = UpdateItemBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        db = AppDatabase.getInstance(this)!!
-        diaryDao = db.getDiaryDao()
-
-        val getIntent = Intent(Intent.ACTION_OPEN_DOCUMENT)
-        getIntent.type = "image/*"
-
         binding.btnAddImage.setOnClickListener {
-            openDialog(this)
+            openDialog()
         }
 
         binding.btnUpdateCompletion.setOnClickListener {
-            if (binding.editTitle.text.isBlank() || binding.editContent.text.isBlank()) {
-                Toast.makeText(this, "모든 항목을 채워주세요!", Toast.LENGTH_SHORT).show()
-            } else {
-                presenter.updateContent()
-            }
+            viewModel.updateContent(
+                binding.editTitle.text.toString(),
+                binding.editContent.text.toString(),
+            )
         }
 
-        item = intent.getSerializableExtra(KEY_DATA) as DiaryEntity
+        viewModel.updateItem(intent.getSerializableExtra(KEY_DATA) as DiaryEntity)
 
-        binding.imgLoad.setImageURI(Uri.parse(item.image))
-        binding.editTitle.text = Editable.Factory.getInstance().newEditable(item.title)
-        binding.editContent.text = Editable.Factory.getInstance().newEditable(item.content)
-    }
+        viewModel.message.observe(this, androidx.lifecycle.Observer {
+            Toast.makeText(this, it, Toast.LENGTH_SHORT).show()
+        })
 
-    override fun finishActivity(message: String) {
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-        presenter.makeMap()
-        finish()
-    }
+        viewModel.map.observe(this, androidx.lifecycle.Observer {
+            setResult(Activity.RESULT_OK, Intent().apply {
+                putExtra("result", it)
+            })
+            finish()
+        })
 
-    override fun sendResult(map: HashMap<String, String>) {
-        setResult(Activity.RESULT_OK, Intent().apply {
-            putExtra("result", map)
+        viewModel.item.observe(this, androidx.lifecycle.Observer {
+            if (viewModel.item.value?.image != null) {
+                binding.imgLoad.setImageURI(Uri.parse(it.image))
+                binding.editTitle.text = Editable.Factory.getInstance().newEditable(it.title)
+                binding.editContent.text = Editable.Factory.getInstance().newEditable(it.content)
+            } else {
+                binding.editTitle.text = Editable.Factory.getInstance().newEditable(it.title)
+                binding.editContent.text = Editable.Factory.getInstance().newEditable(it.content)
+            }
         })
     }
 
-    private fun openDialog(context: Context) {
+    private fun openDialog() {
         val dialogLayout = layoutInflater.inflate(R.layout.dialog, null)
-        val dialogBuild = AlertDialog.Builder(context).apply {
+        val dialogBuild = AlertDialog.Builder(this).apply {
             setView(dialogLayout)
         }
         val dialog = dialogBuild.create().apply { show() }
@@ -128,7 +119,7 @@ class UpdateItemActivity : AppCompatActivity(), UpdateContract.View {
     }
 
     private fun createImageFile(): Uri? {
-        val now = SimpleDateFormat("yyMMdd_HHmmss").format(Date())
+        val now = SimpleDateFormat("yyMMdd_HHmm ss", Locale.KOREA).format(Date())
         val content = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, "img_$now.jpg")
             put(MediaStore.Images.Media.MIME_TYPE, "image/jpg")

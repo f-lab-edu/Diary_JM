@@ -1,6 +1,7 @@
-package com.example.sunflower_jm.activity
+package com.example.sunflower_jm.view.add
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -9,7 +10,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
-import android.util.Log
 import android.widget.Button
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -18,24 +18,20 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.bumptech.glide.Glide
 import com.example.sunflower_jm.R
-import com.example.sunflower_jm.pattern.DialogPresenter
 import com.example.sunflower_jm.db.AppDatabase
 import com.example.sunflower_jm.db.DiaryDao
 import com.example.sunflower_jm.databinding.AddItemBinding
-import com.example.sunflower_jm.db.DiaryEntity
-import com.example.sunflower_jm.pattern.DialogContract
+import com.example.sunflower_jm.db.model.DiaryEntity
 import java.text.SimpleDateFormat
 import java.util.*
 
-class AddItemActivity : AppCompatActivity(), DialogContract.View {
+class AddItemActivity : AppCompatActivity() {
 
-    lateinit var binding: AddItemBinding
-    lateinit var db: AppDatabase
-    lateinit var diaryDao: DiaryDao
+    private lateinit var binding: AddItemBinding
     private var uriInfo: Uri? = null
 
-    private val dialogPresenter by lazy {
-        DialogPresenter(this, binding.imgLoad)
+    private val viewModel by lazy {
+        AddViewModel(AppDatabase.getInstance(this)!!.getDiaryDao())
     }
 
     private val permissionList = arrayOf(
@@ -48,11 +44,11 @@ class AddItemActivity : AppCompatActivity(), DialogContract.View {
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
             result.forEach {
                 if (!it.value) {
-                    Toast.makeText(applicationContext, "${it.key}권한 허용 필요", Toast.LENGTH_SHORT)
-                        .show()
+                    Toast.makeText(applicationContext, "${it.key}권한 허용 필요", Toast.LENGTH_SHORT).show()
                     finish()
                 }
             }
+            openDialog(this)
         }
 
     private val readImage =
@@ -71,45 +67,34 @@ class AddItemActivity : AppCompatActivity(), DialogContract.View {
             }
         }
 
-    @RequiresApi(Build.VERSION_CODES.R)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = AddItemBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        db = AppDatabase.getInstance(this)!!
-        diaryDao = db.getDiaryDao()
-        requestMultiplePermission.launch(permissionList)
 
         binding.btnAddImage.setOnClickListener {
-//            dialogPresenter.openDialog(this)
-            openDialog(this)
+            requestMultiplePermission.launch(permissionList)
         }
 
         binding.btnCompletion.setOnClickListener {
-            insertItem()
+            viewModel.insertItem(
+                uriInfo?.toString(),
+                binding.editTitle.text.toString(),
+                binding.editContent.text.toString()
+            )
         }
+
+        viewModel.success.observe(this, androidx.lifecycle.Observer {
+            if (!it) {
+                Toast.makeText(this, "모든 항목을 채워주세요!", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "수정되었습니다.", Toast.LENGTH_SHORT).show()
+                finish()
+            }
+        })
     }
 
-    override fun setUri(uri: Uri?) {
-        uriInfo = uri
-    }
 
-    private fun insertItem() {
-        val itemImage = uriInfo.toString()
-        val itemTitle = binding.editTitle.text.toString()
-        val itemContent = binding.editContent.text.toString()
-        if (itemTitle.isBlank() || itemContent.isBlank()) {
-            Toast.makeText(this, "모든 항목을 채워주세요!!", Toast.LENGTH_SHORT).show()
-        } else {
-            Thread {
-                diaryDao.insertItem(DiaryEntity(null, itemImage, itemTitle, itemContent))
-                runOnUiThread {
-                    Toast.makeText(this, "추가되었습니다.", Toast.LENGTH_SHORT).show()
-                    finish()
-                }
-            }.start()
-        }
-    }
     private fun openDialog(context: Context) {
         val dialogLayout = layoutInflater.inflate(R.layout.dialog, null)
         val dialogBuild = AlertDialog.Builder(context).apply {
@@ -135,7 +120,7 @@ class AddItemActivity : AppCompatActivity(), DialogContract.View {
     }
 
     private fun createImageFile(): Uri? {
-        val now = SimpleDateFormat("yyMMdd_HHmmss").format(Date())
+        val now = SimpleDateFormat("yyMMdd_HHmm ss", Locale.KOREA).format(Date())
         val content = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, "img_$now.jpg")
             put(MediaStore.Images.Media.MIME_TYPE, "image/jpg")
